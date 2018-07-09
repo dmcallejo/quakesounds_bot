@@ -1,0 +1,110 @@
+{
+  "title": "Quake Sounds",
+  "sounds": [
+    {
+      "filename": "combowhore.ogg",
+      "text": "Combo whore",
+      "tags": "combowhore combo whore"
+    },
+    {
+      "filename": "dominating.ogg",
+      "text": "DOMINATING",
+      "tags": "dominating"
+    },
+    {
+      "filename": "doublekill.ogg",
+      "text": "Double kill",
+      "tags": "doublekill double kill"
+    },
+    {
+      "filename": "firstblood.ogg",
+      "text": "FIRST BLOOD",
+      "tags": "first blood"
+    },
+    {
+      "filename": "godlike.ogg",
+      "text": "GODLIKE",
+      "tags": "godlike god like"
+    },
+    {
+      "filename": "headshot.ogg",
+      "text": "Headshot",
+      "tags": "headshot"
+    },
+    {
+      "filename": "holyshit.ogg",
+      "text": "Holy Shit",
+      "tags": "holyshit holy shit"
+    },
+    {
+      "filename": "humiliation.ogg",
+      "text": "Humiliation",
+      "tags": "humiliation"
+    },
+    {
+      "filename": "impressive.ogg",
+      "text": "Impressive.",
+      "tags": "impressive"
+    },
+    {
+      "filename": "killingspree.ogg",
+      "text": "Killing spree!",
+      "tags": "killing spree"
+    },
+    {
+      "filename": "lu-lu-ludicrouskill.ogg",
+      "text": "LU-LU-LU-LUDICROUS KILL!",
+      "tags": "ludicrous kill"
+    },
+    {
+      "filename": "megakill.ogg",
+      "text": "Mega kill",
+      "tags": "mega kill megakill"
+    },
+    {
+      "filename": "mo-mo-monsterkill.ogg",
+      "text": "MO-MO-MO-MONSTER KILL!",
+      "tags": "monster kill"
+    },
+    {
+      "filename": "multikill.ogg",
+      "text": "Multi kill",
+      "tags": "multi kill"
+    },
+    {
+      "filename": "perfect.ogg",
+      "text": "Perfect.",
+      "tags": "perfect"
+    },
+    {
+      "filename": "rampage.ogg",
+      "text": "Rampage",
+      "tags": "rampage"
+    },
+    {
+      "filename": "teamkiller.ogg",
+      "text": "Team killer!",
+      "tags": "team killer"
+    },
+    {
+      "filename": "triplekill.ogg",
+      "text": "Triple kill",
+      "tags": "triple kill"
+    },
+    {
+      "filename": "ultrakill.ogg",
+      "text": "Ultra kill",
+      "tags": "ultra kill"
+    },
+    {
+      "filename": "unstoppable.ogg",
+      "text": "Unstoppable",
+      "tags": "unstoppable"
+    },
+    {
+      "filename": "wickedsick.ogg",
+      "text": "Wicked sick!",
+      "tags": "wicked sick"
+    }
+  ]
+}
