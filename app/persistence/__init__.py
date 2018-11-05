@@ -43,18 +43,17 @@ class ResultHistory(db.Entity):
 
 class Database:
 
-    def __init__(self, provider, filename=None, host=None, user=None, password=None, database_name=None, ):
+    def __init__(self, provider, filename=None, host=None, port=None, user=None, password=None, database_name=None):
         if provider == 'mysql':
-            LOG.info('Starting persistence layer using MySQL on %s db: %s', host, database_name)
-            LOG.debug('MySQL data: host --> %s, user --> %s, db --> %s, password empty --> %s',
-                      host, user, database_name, str(password is None))
-            db.bind(provider='mysql', host=host, user=user, passwd=password, db=database_name, create_db=True)
+            LOG.info('Starting persistence layer using MySQL on %s:%s db: %s', host, port, database_name)
+            LOG.debug('MySQL data: host --> %s, port -->%s, user --> %s, db --> %s, password empty --> %s',
+                      host, port, user, database_name, str(password is None))
+            db.bind(provider='mysql', host=host, port=int(port), user=user, passwd=password, db=database_name)
         elif provider == 'postgres':
-            LOG.info('Starting persistence layer using PostgreSQL on %s db: %s', host, database_name, create_db=True)
-            LOG.debug('PostgreSQL data: host --> %s, user --> %s, db --> %s, password empty --> %s',
-                      host, user, database_name, str(password is None))
-            db.bind(provider='postgres', host=host, user=user, password=password, database=database_name,
-                    create_db=True)
+            LOG.info('Starting persistence layer using PostgreSQL on %s:%s db: %s', host, port, database_name)
+            LOG.debug('PostgreSQL data: host --> %s, port --> %s, user --> %s, db --> %s, password empty --> %s',
+                      host, user, port, database_name, str(password is None))
+            db.bind(provider='postgres', host=host, port=port, user=user, password=password, database=database_name)
         elif filename is not None:
             LOG.info('Starting persistence layer on file %s using SQLite.', filename)
             db.bind(provider='sqlite', filename=filename, create_db=True)

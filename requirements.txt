@@ -2,5 +2,6 @@ pytelegrambotapi
 unidecode
 requests
 pony
+pymysql
 uptime
 aiohttp

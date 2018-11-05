@@ -14,15 +14,20 @@ import os
 import PrettyUptime
 import webhook
 
-LOG = logger.get_logger('QuakeSounds_Bot')
+BOT_NAME='QuakeSounds_Bot'
+
+LOG = logger.get_logger(BOT_NAME)
 REMOVE_CHARS = string.punctuation + string.whitespace
 TELEGRAM_INLINE_MAX_RESULTS = 48
 
 _ENV_TELEGRAM_BOT_TOKEN = "TELEGRAM_BOT_TOKEN"
 _ENV_TELEGRAM_USER_ALIAS = "TELEGRAM_USER_ALIAS"
 _ENV_SQLITE_FILE = 'SQLITE_FILE'
+_ENV_DATABASE_NAME = 'DATABASE_NAME'
 _ENV_MYSQL_HOST = 'MYSQL_HOST'
 _ENV_MYSQL_PORT = 'MYSQL_PORT'
+_ENV_MYSQL_USER = 'MYSQL_USER'
+_ENV_MYSQL_PASSWORD = 'MYSQL_PASSWORD'
 _ENV_DATA_JSON = 'DATA_JSON'
 _ENV_LOGGING_FILE = 'LOGFILE'
 _ENV_WEBHOOK_HOST = 'WEBHOOK_HOST'
@@ -37,8 +42,11 @@ parser.add_argument("-v", "--verbosity", help="Defines log verbosity",
 parser.add_argument("-b", "--bucket", help="Bucket or url where audios are stored",
                     default='https://github.com/dmcallejo/quakesounds_bot/raw/master/quakesounds/')
 parser.add_argument("--sqlite", help="SQLite file path")
-parser.add_argument("--mysql-host", help="mysql host")
+parser.add_argument("--database", type=str, help="Database name", default=BOT_NAME.lower())
+parser.add_argument("--mysql-host", type=str, help="mysql host")
 parser.add_argument("--mysql-port", type=str, help="mysql port", default='3306')
+parser.add_argument("--mysql-user", type=str, help="mysql user")
+parser.add_argument("--mysql-password", type=str, help="mysql password")
 parser.add_argument("--token", type=str, help="Telegram API token given by @botfather.")
 parser.add_argument("--admin", type=str, help="Alias of the admin user.")
 parser.add_argument("--data", type=str, help="Data JSON path.", default='data.json')
@@ -84,12 +92,27 @@ except KeyError as key_error:
             _ENV_TELEGRAM_USER_ALIAS)
 
 try:
+    args.database = os.environ[_ENV_DATABASE_NAME]
+except KeyError:
+    pass
+
+try:
     args.mysql_host = os.environ[_ENV_MYSQL_HOST]
 except KeyError:
     pass
 
 try:
     args.mysql_port = os.environ[_ENV_MYSQL_PORT]
+except KeyError:
+    pass
+
+try:
+    args.mysql_user = os.environ[_ENV_MYSQL_USER]
+except KeyError:
+    pass
+
+try:
+    args.mysql_password = os.environ[_ENV_MYSQL_PASSWORD]
 except KeyError:
     pass
 
@@ -127,9 +150,10 @@ LOG.info('Starting up bot...')
 
 if args.mysql_host:
     LOG.info('Using MySQL as persistence layer: host %s port %s', args.mysql_host, args.mysql_port)
-    # TODO: Pony migration
+    database = Database('mysql', host=args.mysql_host, port=args.mysql_port, database_name=args.database,
+                        user=args.mysql_user, password= args.mysql_password)
 else:
-    LOG.info('Using SQLite as persistence layer: %s', args.sqlite)
+    LOG.info('Using SQLite as persistence layer.')
     database = Database('sqlite', filename=args.sqlite)
 
 bot = telebot.TeleBot(args.token)
@@ -276,7 +300,10 @@ LOG.info('Serving %i sounds.', len(sounds))
 if args.webhook_host:
     webhook.start_webhook(bot, args.webhook_host, args.webhook_port, args.webhook_listening, args.webhook_listening_port)
 else:
-    bot.remove_webhook()
+    try:
+        bot.remove_webhook()
+    except telebot.apihelper.ApiException as e:
+        LOG.debug(e)
     while True:
         try:
             sleep(1)
