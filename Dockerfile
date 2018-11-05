@@ -9,12 +9,16 @@ RUN apk update \
         gcc \
         wget \
         git \
+        libffi-dev \
+        openssl-dev \
     && pip3 install -r requirements.txt \
     && apk del build-dependencies \
         build-base \
         gcc \
         wget \
         git \
+        libffi-dev \
+        openssl-dev \
     && rm -rf /var/cache/apk/*
 
 WORKDIR /app

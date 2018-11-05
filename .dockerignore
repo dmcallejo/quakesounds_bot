@@ -1,6 +1,6 @@
 *.sqlite
 *.log
 .git
-venv
+.venv
 quakesounds/
 __pycache__
