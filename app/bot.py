@@ -9,12 +9,11 @@ import unidecode
 import random
 from time import sleep
 from persistence import *
-from persistence import tools
 import os
 import PrettyUptime
 import webhook
 
-BOT_NAME='QuakeSounds_Bot'
+BOT_NAME = 'QuakeSounds_Bot'
 
 LOG = logger.get_logger(BOT_NAME)
 REMOVE_CHARS = string.punctuation + string.whitespace
@@ -172,7 +171,7 @@ def send_welcome(message):
 def query_empty(inline_query):
     LOG.debug(inline_query)
     r = []
-    recently_used_sounds = tools.get_latest_used_sounds_from_user(inline_query.from_user.id)
+    recently_used_sounds = database.get_latest_used_sounds_from_user(inline_query.from_user.id)
     for sound in recently_used_sounds:
         r.append(types.InlineQueryResultVoice(
             sound["id"], BUCKET + sound["filename"], '🕚 '+sound["text"], caption=sound["text"]))

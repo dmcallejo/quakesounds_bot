@@ -1,70 +1,67 @@
-import logging
+import logger
 import datetime
 from pony.orm import *
 
-LOG = logging.getLogger('QuakeSounds_Bot.persistence')
-db = Database()
-
-
-class Sound(db.Entity):
-    id = PrimaryKey(int)
-    filename = Required(str, index=True, unique=True)
-    text = Required(str)
-    tags = Required(str)
-    uses = Set('ResultHistory')
-    disabled = Required(bool)
-
-
-class User(db.Entity):
-    id = PrimaryKey(int)
-    is_bot = Required(bool)
-    first_name = Required(str)
-    last_name = Optional(str)
-    username = Optional(str)
-    language_code = Optional(str)
-    queries = Set('QueryHistory')
-    results = Set('ResultHistory')
-    first_seen = Required(datetime.datetime, sql_default='CURRENT_TIMESTAMP')
-
-
-class QueryHistory(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    user = Required(User)
-    text = Optional(str)
-    timestamp = Required(datetime.datetime, sql_default='CURRENT_TIMESTAMP')
-
-
-class ResultHistory(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    user = Required(User)
-    sound = Required(Sound)
-    timestamp = Required(datetime.datetime, sql_default='CURRENT_TIMESTAMP')
+LOG = logger.get_logger('persistence')
 
 
 class Database:
 
     def __init__(self, provider, filename=None, host=None, port=None, user=None, password=None, database_name=None):
+        self.db = pony.orm.Database()
+
+        class Sound(self.db.Entity):
+            id = PrimaryKey(int)
+            filename = Required(str, index=True, unique=True)
+            text = Required(str)
+            tags = Required(str)
+            uses = Set('ResultHistory')
+            disabled = Required(bool)
+
+        class User(self.db.Entity):
+            id = PrimaryKey(int)
+            is_bot = Required(bool)
+            first_name = Required(str)
+            last_name = Optional(str)
+            username = Optional(str)
+            language_code = Optional(str)
+            queries = Set('QueryHistory')
+            results = Set('ResultHistory')
+            first_seen = Required(datetime.datetime, sql_default='CURRENT_TIMESTAMP')
+
+        class QueryHistory(self.db.Entity):
+            id = PrimaryKey(int, auto=True)
+            user = Required(User)
+            text = Optional(str)
+            timestamp = Required(datetime.datetime, sql_default='CURRENT_TIMESTAMP')
+
+        class ResultHistory(self.db.Entity):
+            id = PrimaryKey(int, auto=True)
+            user = Required(User)
+            sound = Required(Sound)
+            timestamp = Required(datetime.datetime, sql_default='CURRENT_TIMESTAMP')
+
         if provider == 'mysql':
             LOG.info('Starting persistence layer using MySQL on %s:%s db: %s', host, port, database_name)
             LOG.debug('MySQL data: host --> %s, port -->%s, user --> %s, db --> %s, password empty --> %s',
                       host, port, user, database_name, str(password is None))
-            db.bind(provider='mysql', host=host, port=int(port), user=user, passwd=password, db=database_name)
+            self.db.bind(provider='mysql', host=host, port=int(port), user=user, passwd=password, db=database_name)
         elif provider == 'postgres':
             LOG.info('Starting persistence layer using PostgreSQL on %s:%s db: %s', host, port, database_name)
             LOG.debug('PostgreSQL data: host --> %s, port --> %s, user --> %s, db --> %s, password empty --> %s',
                       host, user, port, database_name, str(password is None))
-            db.bind(provider='postgres', host=host, port=port, user=user, password=password, database=database_name)
+            self.db.bind(provider='postgres', host=host, port=port, user=user, password=password, database=database_name)
         elif filename is not None:
             LOG.info('Starting persistence layer on file %s using SQLite.', filename)
-            db.bind(provider='sqlite', filename=filename, create_db=True)
+            self.db.bind(provider='sqlite', filename=filename, create_db=True)
         else:
             LOG.info('Starting persistence layer on memory using SQLite.')
-            db.bind(provider='sqlite', filename=':memory:')
-        db.generate_mapping(create_tables=True)
+            self.db.bind(provider='sqlite', filename=':memory:')
+        self.db.generate_mapping(create_tables=True)
 
     @db_session
     def get_sounds(self, include_disabled=False):
-        query = Sound.select(lambda s: s.disabled is include_disabled)
+        query = self.db.Sound.select(lambda s: s.disabled is include_disabled)
         sounds = [object_to_sound(db_object)
                   for db_object in query]
         LOG.debug("get_sounds: Obtained: %s", str(sounds))
@@ -73,11 +70,11 @@ class Database:
     @db_session
     def get_sound(self, id=None, filename=None):
         if not id:
-            db_object = Sound.get(filename=filename)
+            db_object = self.db.Sound.get(filename=filename)
         elif not filename:
-            db_object = Sound.get(id=id)
+            db_object = self.db.Sound.get(id=id)
         else:
-            db_object = Sound.get(id=id, filename=filename)
+            db_object = self.db.Sound.get(id=id, filename=filename)
 
         if db_object:
             return object_to_sound(db_object)
@@ -85,13 +82,13 @@ class Database:
     @db_session
     def add_sound(self, id, filename, text, tags):
         LOG.info('Adding sound: %s %s', id, filename)
-        Sound(id=id, filename=filename, text=text, tags=tags, disabled=False)
+        self.db.Sound(id=id, filename=filename, text=text, tags=tags, disabled=False)
         commit()
 
     @db_session
     def delete_sound(self, sound):
         LOG.info('Deleting sound %s', str(sound))
-        sound = Sound.get(filename=sound['filename'])
+        sound = self.db.Sound.get(filename=sound['filename'])
         if len(sound.uses) > 0:
             sound.delete()
         else:
@@ -105,7 +102,7 @@ class Database:
         db_user = self.get_user(id=user['id'])
         if db_user is not None and user != db_user:
             LOG.info('Updating user: %s', str(db_user))
-            updated_user = User[user['id']]
+            updated_user = self.db.User[user['id']]
             updated_user.id = user['id']
             updated_user.is_bot = user['is_bot']
             updated_user.first_name = user['first_name']
@@ -114,7 +111,7 @@ class Database:
             updated_user.language_code = (user['language_code'] if user['language_code'] is not None else '')
         elif db_user is None:
             LOG.info('Adding user: %s', str(user))
-            User(id=user['id'], is_bot=user['is_bot'], first_name=user['first_name'],
+            self.db.User(id=user['id'], is_bot=user['is_bot'], first_name=user['first_name'],
                  last_name=(user['last_name'] if user['last_name'] is not None else ''),
                  username=(user['username'] if user['username'] is not None else ''),
                  language_code=(user['language_code'] if user['language_code'] is not None else ''))
@@ -126,7 +123,7 @@ class Database:
 
     @db_session
     def get_users(self):
-        query = User.select()
+        query = self.db.User.select()
         users = [object_to_user(db_object) for db_object in query]
         LOG.debug("get_users: Obtained: %s", str(users))
         return users
@@ -134,11 +131,11 @@ class Database:
     @db_session
     def get_user(self, id=None, username=None):
         if not id:
-            db_object = User.get(username=username)
+            db_object = self.db.User.get(username=username)
         elif not username:
-            db_object = User.get(id=id)
+            db_object = self.db.User.get(id=id)
         else:
-            db_object = User.get(id=id, username=username)
+            db_object = self.db.User.get(id=id, username=username)
 
         if db_object:
             return object_to_user(db_object)
@@ -150,11 +147,12 @@ class Database:
         db_user = self.get_user(from_user.id)
         if not db_user:
             db_user = self.add_or_update_user(from_user)
-        QueryHistory(user=User[db_user['id']], text=query.query)
+
+        self.db.QueryHistory(user=self.db.User[db_user['id']], text=query.query)
 
     @db_session
     def get_queries(self):
-        query = QueryHistory.select()
+        query = self.db.QueryHistory.select()
         queries = [object_to_query(db_object) for db_object in query]
         LOG.debug("get_queries: Obtained: %s", str(queries))
         return queries
@@ -166,14 +164,32 @@ class Database:
         db_user = self.get_user(from_user.id)
         if not db_user:
             db_user = self.add_or_update_user(from_user)
-        ResultHistory(user=User[db_user['id']], sound=Sound[result.result_id])
+
+        self.db.ResultHistory(user=self.db.User[db_user['id']], sound=self.db.Sound[result.result_id])
 
     @db_session
     def get_results(self):
-        query = ResultHistory.select()
+        query = self.db.ResultHistory.select()
         results = [object_to_result(db_object) for db_object in query]
         LOG.debug("get_results: Obtained: %s", str(results))
         return results
+
+    @db_session
+    def get_latest_used_sounds_from_user(self, user_id, limit=3):
+        user = self.db.User.get(id=user_id)
+        if user:
+            results = self.db.Sound.select_by_sql('SELECT sound.* '
+                                                  'FROM sound, resulthistory '
+                                                  'WHERE sound.disabled = 0 AND '
+                                                  'resulthistory.sound = sound.id '
+                                                  'AND resulthistory.user = $user '
+                                                  'GROUP BY sound.id '
+                                                  'ORDER BY resulthistory.timestamp DESC;',
+                                                  globals={'user': user.id})[:limit]
+            LOG.debug("Obtained %d latest used sound results.", len(results))
+            return [object_to_sound(sound) for sound in results]
+        else:
+            return []
 
 
 # MAPPERS

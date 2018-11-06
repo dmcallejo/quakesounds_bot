@@ -28,7 +28,7 @@ def get_numeric_log_level(verbosity):
 
 
 def get_logger(name):
-    return logging.getLogger(name)
+    return logger.getChild(name)
 
 
 def add_file_handler(file_path, log_level=DEFAULT_LOG_LEVEL, formatter=DEFAULT_FORMATTER):
