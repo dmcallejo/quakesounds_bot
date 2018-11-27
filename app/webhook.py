@@ -5,10 +5,10 @@ import app.logger as logger
 from aiohttp import web
 import telebot
 
-LOG = logger.get_logger('webhook')
-
 
 def start_webhook(bot, webhook_host, webhook_port, listening_ip, listening_port):
+    global LOG
+    LOG = logger.get_logger('webhook')
     LOG.info("Starting webhook on {}:{}".format(webhook_host, webhook_port))
     webhook_url_base = "https://{}:{}".format(webhook_host, webhook_port)
     webhook_url_path = "/{}/".format(bot.token)

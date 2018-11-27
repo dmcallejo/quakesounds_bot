@@ -10,13 +10,12 @@ from time import sleep
 from app.persistence import *
 import app.logger as logger
 import os
-import app.persistence.migration_tool
 import PrettyUptime
 import webhook
 
 BOT_NAME = 'QuakeSounds_Bot'
-
-LOG = logger.get_logger(BOT_NAME)
+logger.set_logger(BOT_NAME)
+LOG = logger.get_logger()
 REMOVE_CHARS = string.punctuation + string.whitespace
 TELEGRAM_INLINE_MAX_RESULTS = 48
 
@@ -149,10 +148,13 @@ except KeyError:
 LOG.info('Starting up bot...')
 if args.sqlite and args.mysql_host:
     LOG.info("SQLite and MySQL databases on arguments. Attempting data migration...")
-    sqlite = Database('sqlite', filename=args.sqlite)
-    mysql = Database('mysql', host=args.mysql_host, port=args.mysql_port, database_name=args.database,
-               user=args.mysql_user, password=args.mysql_password)
-    app.persistence.migration_tool.migrate(sqlite, mysql)
+    try:
+        sqlite = Database('sqlite', filename=args.sqlite, create=False)
+        mysql = Database('mysql', host=args.mysql_host, port=args.mysql_port, database_name=args.database,
+                         user=args.mysql_user, password=args.mysql_password)
+        migrate(sqlite, mysql)
+    except OSError as e:
+        LOG.info("Migration aborted: %s.", e.args)
 if args.mysql_host:
     LOG.info('Using MySQL as persistence layer: host %s port %s', args.mysql_host, args.mysql_port)
     database = Database('mysql', host=args.mysql_host, port=args.mysql_port, database_name=args.database,

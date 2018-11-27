@@ -1,11 +1,13 @@
 import unittest
 from app.persistence import *
-
+from app import logger
 
 class PersistenceTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        LOG_NAME = 'QuakeSounds_Bot.test'
+        logger.set_logger(LOG_NAME)
         cls.db = Database(provider='sqlite')
 
     def test_populate_sounds(self):

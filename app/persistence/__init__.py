@@ -2,13 +2,14 @@ import datetime
 from pony.orm import *
 import app.logger as logger
 
-LOG = logger.get_logger('persistence')
-
 
 class Database:
 
-    def __init__(self, provider, filename=None, host=None, port=None, user=None, password=None, database_name=None):
+    def __init__(self, provider, filename=None, host=None, port=None, user=None, password=None, database_name=None,
+                 create=True):
         self.db = pony.orm.Database()
+        global LOG
+        LOG = logger.get_logger('persistence')
 
         class Sound(self.db.Entity):
             id = PrimaryKey(int)
@@ -53,8 +54,8 @@ class Database:
             self.db.bind(provider='postgres', host=host, port=port, user=user, password=password,
                          database=database_name)
         elif filename is not None:
-            LOG.info('Starting persistence layer on file %s using SQLite.', filename)
-            self.db.bind(provider='sqlite', filename=filename, create_db=True)
+                LOG.info('Starting persistence layer on file %s using SQLite.', filename)
+                self.db.bind(provider='sqlite', filename=filename, create_db=create)
         else:
             LOG.info('Starting persistence layer on memory using SQLite.')
             self.db.bind(provider='sqlite', filename=':memory:')
@@ -251,6 +252,49 @@ class Sound:
                 self.__class__ == other.__class__ and
                 self.id == other.id)
 
+
+def migrate(from_db, to_db):
+    sounds = from_db.get_sounds()
+    users = from_db.get_users()
+    queries = from_db.get_queries()
+    results = from_db.get_results()
+    LOG.info("Migrating %d sounds, %d users, %d queries, %d results.",
+             len(sounds), len(users), len(queries), len(results))
+    for sound in sounds:
+        if to_db.get_sound(sound.id):
+            continue
+        to_db.add_sound(sound.id,
+                        sound.filename,
+                        sound.text,
+                        sound.tags,
+                        sound.disabled)
+    for user in users:
+        if to_db.get_user(user.id):
+            continue
+        to_db.add_user(user.id,
+                       user.is_bot,
+                       user.first_name,
+                       user.last_name,
+                       user.username,
+                       user.language_code,
+                       user.queries,
+                       user.results,
+                       user.first_seen)
+    for query in queries:
+        if to_db.get_query(query.id):
+            continue
+        to_db.add_raw_query(query.id,
+                            query.user,
+                            query.text,
+                            query.timestamp)
+    for result in results:
+        if to_db.get_result(result.id):
+            continue
+        to_db.add_raw_result(result.id,
+                             result.user,
+                             result.sound,
+                             result.timestamp)
+    LOG.info("Migration finished.")
 
 # MAPPERS
 
