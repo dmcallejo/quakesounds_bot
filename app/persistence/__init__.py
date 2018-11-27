@@ -1,6 +1,6 @@
-import logger
 import datetime
 from pony.orm import *
+import app.logger as logger
 
 LOG = logger.get_logger('persistence')
 
@@ -50,7 +50,8 @@ class Database:
             LOG.info('Starting persistence layer using PostgreSQL on %s:%s db: %s', host, port, database_name)
             LOG.debug('PostgreSQL data: host --> %s, port --> %s, user --> %s, db --> %s, password empty --> %s',
                       host, user, port, database_name, str(password is None))
-            self.db.bind(provider='postgres', host=host, port=port, user=user, password=password, database=database_name)
+            self.db.bind(provider='postgres', host=host, port=port, user=user, password=password,
+                         database=database_name)
         elif filename is not None:
             LOG.info('Starting persistence layer on file %s using SQLite.', filename)
             self.db.bind(provider='sqlite', filename=filename, create_db=True)
@@ -60,11 +61,14 @@ class Database:
         self.db.generate_mapping(create_tables=True)
 
     @db_session
-    def get_sounds(self, include_disabled=False):
-        query = self.db.Sound.select(lambda s: s.disabled is include_disabled)
-        sounds = [object_to_sound(db_object)
+    def get_sounds(self, include_disabled=True):
+        if include_disabled:
+            query = self.db.Sound.select()
+        else:
+            query = self.db.Sound.select(lambda sound: sound.disabled is False)
+        sounds = [Sound(db_object)
                   for db_object in query]
-        LOG.debug("get_sounds: Obtained: %s", str(sounds))
+        LOG.debug("get_sounds: Obtained %d: %s", len(sounds), str(sounds))
         return sounds
 
     @db_session
@@ -77,12 +81,12 @@ class Database:
             db_object = self.db.Sound.get(id=id, filename=filename)
 
         if db_object:
-            return object_to_sound(db_object)
+            return Sound(db_object)
 
     @db_session
-    def add_sound(self, id, filename, text, tags):
+    def add_sound(self, id, filename, text, tags, disabled=False):
         LOG.info('Adding sound: %s %s', id, filename)
-        self.db.Sound(id=id, filename=filename, text=text, tags=tags, disabled=False)
+        self.db.Sound(id=id, filename=filename, text=text, tags=tags, disabled=disabled)
         commit()
 
     @db_session
@@ -93,6 +97,19 @@ class Database:
             sound.delete()
         else:
             sound.disabled = True
+
+    @db_session
+    def add_user(self, id, is_bot, first_name, last_name, username, language_code, queries, results, first_seen):
+        LOG.info("Adding user {} {} (@{}) - {}".format(first_name, last_name, username, first_seen))
+        self.db.User(id=id,
+                     is_bot=is_bot,
+                     first_name=first_name,
+                     last_name=last_name,
+                     username=username,
+                     language_code=language_code,
+                     # queries=queries,
+                     # results=results,
+                     first_seen=first_seen)
 
     @db_session
     def add_or_update_user(self, user):
@@ -112,9 +129,9 @@ class Database:
         elif db_user is None:
             LOG.info('Adding user: %s', str(user))
             self.db.User(id=user['id'], is_bot=user['is_bot'], first_name=user['first_name'],
-                 last_name=(user['last_name'] if user['last_name'] is not None else ''),
-                 username=(user['username'] if user['username'] is not None else ''),
-                 language_code=(user['language_code'] if user['language_code'] is not None else ''))
+                         last_name=(user['last_name'] if user['last_name'] is not None else ''),
+                         username=(user['username'] if user['username'] is not None else ''),
+                         language_code=(user['language_code'] if user['language_code'] is not None else ''))
         else:
             LOG.debug('User %s already in database.', user['id'])
             return
@@ -124,8 +141,8 @@ class Database:
     @db_session
     def get_users(self):
         query = self.db.User.select()
-        users = [object_to_user(db_object) for db_object in query]
-        LOG.debug("get_users: Obtained: %s", str(users))
+        users = query[:]
+        LOG.debug("get_users: Obtained %d: %s", len(users), str(users))
         return users
 
     @db_session
@@ -141,6 +158,11 @@ class Database:
             return object_to_user(db_object)
 
     @db_session
+    def add_raw_query(self, id, user, text, timestamp):
+        LOG.info("Adding query: {} - {} ({})".format(user, text, timestamp))
+        self.db.QueryHistory(id=id, user=self.db.User[user.id], text=text, timestamp=timestamp)
+
+    @db_session
     def add_query(self, query):
         LOG.info("Adding query: %s", str(query))
         from_user = query.from_user
@@ -151,11 +173,20 @@ class Database:
         self.db.QueryHistory(user=self.db.User[db_user['id']], text=query.query)
 
     @db_session
+    def get_query(self, id):
+        return self.db.QueryHistory.get(id=id)
+
+    @db_session
     def get_queries(self):
         query = self.db.QueryHistory.select()
-        queries = [object_to_query(db_object) for db_object in query]
-        LOG.debug("get_queries: Obtained: %s", str(queries))
+        queries = query[:]
+        LOG.debug("get_queries: Obtained %d: %s", len(queries), str(queries))
         return queries
+
+    @db_session
+    def add_raw_result(self, id, user, sound, timestamp):
+        LOG.info("Adding result: {} - {} ({})".format(user, sound, timestamp))
+        self.db.ResultHistory(id=id, user=self.db.User[user.id], sound=self.db.Sound[sound.id], timestamp=timestamp)
 
     @db_session
     def add_result(self, result):
@@ -168,10 +199,14 @@ class Database:
         self.db.ResultHistory(user=self.db.User[db_user['id']], sound=self.db.Sound[result.result_id])
 
     @db_session
+    def get_result(self, id):
+        return self.db.ResultHistory.get(id=id)
+
+    @db_session
     def get_results(self):
         query = self.db.ResultHistory.select()
-        results = [object_to_result(db_object) for db_object in query]
-        LOG.debug("get_results: Obtained: %s", str(results))
+        results = query[:]
+        LOG.debug("get_results: Obtained %d: %s", len(results), str(results))
         return results
 
     @db_session
@@ -180,16 +215,40 @@ class Database:
         if user:
             results = self.db.Sound.select_by_sql('SELECT sound.* '
                                                   'FROM sound, resulthistory '
-                                                  'WHERE sound.disabled = 0 AND '
-                                                  'resulthistory.sound = sound.id '
-                                                  'AND resulthistory.user = $user '
-                                                  'GROUP BY sound.id '
-                                                  'ORDER BY resulthistory.timestamp DESC;',
-                                                  globals={'user': user.id})[:limit]
+                                                  'WHERE sound.id = resulthistory.sound '
+                                                  'AND resulthistory.id IN '
+                                                  '(SELECT MAX(id) '
+                                                  'FROM resulthistory '
+                                                  'WHERE resulthistory.user = $user '
+                                                  'GROUP BY resulthistory.sound) '
+                                                  'ORDER BY resulthistory.id DESC '
+                                                  'LIMIT $limit;',
+                                                  globals={'user': user.id, 'limit': limit})
             LOG.debug("Obtained %d latest used sound results.", len(results))
-            return [object_to_sound(sound) for sound in results]
+            return [Sound(db_object)
+                    for db_object in results]
         else:
             return []
+
+
+class Sound:
+    def __init__(self, db_object):
+        self.id = db_object.id
+        self.filename = db_object.filename
+        self.text = db_object.text
+        self.tags = db_object.tags
+        self.disabled = db_object.disabled
+
+    def __repr__(self):
+        return f"Sound({self.id} {self.filename})"
+
+    def __hash__(self):
+        return hash(self.id)
+
+    def __eq__(self, other):
+        return (
+                self.__class__ == other.__class__ and
+                self.id == other.id)
 
 
 # MAPPERS

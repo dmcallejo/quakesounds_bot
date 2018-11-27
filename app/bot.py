@@ -3,13 +3,14 @@ import requests
 import string
 import telebot.types as types
 import argparse
-import logger
 import json
 import unidecode
 import random
 from time import sleep
-from persistence import *
+from app.persistence import *
+import app.logger as logger
 import os
+import app.persistence.migration_tool
 import PrettyUptime
 import webhook
 
@@ -146,7 +147,12 @@ except KeyError:
     pass
 
 LOG.info('Starting up bot...')
-
+if args.sqlite and args.mysql_host:
+    LOG.info("SQLite and MySQL databases on arguments. Attempting data migration...")
+    sqlite = Database('sqlite', filename=args.sqlite)
+    mysql = Database('mysql', host=args.mysql_host, port=args.mysql_port, database_name=args.database,
+               user=args.mysql_user, password=args.mysql_password)
+    app.persistence.migration_tool.migrate(sqlite, mysql)
 if args.mysql_host:
     LOG.info('Using MySQL as persistence layer: host %s port %s', args.mysql_host, args.mysql_port)
     database = Database('mysql', host=args.mysql_host, port=args.mysql_port, database_name=args.database,
@@ -174,15 +180,15 @@ def query_empty(inline_query):
     recently_used_sounds = database.get_latest_used_sounds_from_user(inline_query.from_user.id)
     for sound in recently_used_sounds:
         r.append(types.InlineQueryResultVoice(
-            sound["id"], BUCKET + sound["filename"], '🕚 '+sound["text"], caption=sound["text"]))
+            sound.id, BUCKET + sound.filename, '🕚 '+sound.text, caption=sound.text))
     for sound in sounds:
         if sound in recently_used_sounds:
             continue
         r.append(types.InlineQueryResultVoice(
-            sound["id"], BUCKET + sound["filename"], sound["text"], caption=sound["text"]))
+            sound.id, BUCKET + sound.filename, sound.text, caption=sound.text))
         if len(r) > TELEGRAM_INLINE_MAX_RESULTS:  # https://core.telegram.org/bots/api#answerinlinequery
             break
-    bot.answer_inline_query(inline_query.id, r, is_personal=True, cache_time=5)
+    bot.answer_inline_query(inline_query.id, r, is_personal=True, cache_time=0)
     on_query(inline_query)
 
 
@@ -194,9 +200,9 @@ def query_text(inline_query):
         LOG.debug("Querying: " + text)
         r = []
         for sound in sounds:
-            if text in sound["tags"]:  # FIXME: Improve search
+            if text in sound.tags:  # FIXME: Improve search
                 r.append(types.InlineQueryResultVoice(
-                    sound["id"], BUCKET + sound["filename"], sound["text"], caption=sound["text"]))
+                    sound.id, BUCKET + sound.filename, sound.text, caption=sound.text))
             if len(r) > TELEGRAM_INLINE_MAX_RESULTS:
                 break
         bot.answer_inline_query(inline_query.id, r, cache_time=5)
@@ -222,7 +228,7 @@ def on_query(query):
 
 
 def synchronize_sounds():
-    db_sounds = database.get_sounds()
+    db_sounds = database.get_sounds(include_disabled=False)
     LOG.debug("Sounds in db (%d)", len(db_sounds))
 
     b_data_json = open(args.data).read()
@@ -238,12 +244,12 @@ def synchronize_sounds():
             jsound["id"] = ''.join(random.choices(string.digits, k=8))
             database.add_sound(jsound["id"], jsound["filename"], jsound["text"], jsound["tags"])
 
-    # Removing deleted sounds form db
-    db_sounds = database.get_sounds()
+    # Removing deleted sounds from db
+    db_sounds = database.get_sounds(include_disabled=False)
     for db_sound in db_sounds:
         found = None
         for jsound in json_sounds:
-            if jsound["filename"] == db_sound["filename"]:
+            if jsound["filename"] == db_sound.filename:
                 found = jsound
                 break
         if not found:

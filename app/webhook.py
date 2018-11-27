@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logger
+import app.logger as logger
 from aiohttp import web
 import telebot
 
-LOG = logger.get_logger('QuakeSounds_Bot.webhook')
+LOG = logger.get_logger('webhook')
 
 
 def start_webhook(bot, webhook_host, webhook_port, listening_ip, listening_port):

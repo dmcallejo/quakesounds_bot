@@ -2,6 +2,7 @@ import logging
 DEFAULT_LOG_LEVEL = logging.DEBUG
 DEFAULT_FORMATTER = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+
 # create logger with 'spam_application'
 logger = logging.getLogger('QuakeSounds_Bot')
 logger.setLevel(DEFAULT_LOG_LEVEL)
