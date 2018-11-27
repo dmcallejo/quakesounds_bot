@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import app.logger as logger
+import logger
 from aiohttp import web
 import telebot
 

@@ -1,6 +1,6 @@
 import datetime
 from pony.orm import *
-import app.logger as logger
+import logger
 
 
 class Database:

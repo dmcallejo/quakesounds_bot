@@ -7,8 +7,8 @@ import json
 import unidecode
 import random
 from time import sleep
-from app.persistence import *
-import app.logger as logger
+from persistence import *
+import logger
 import os
 import PrettyUptime
 import webhook

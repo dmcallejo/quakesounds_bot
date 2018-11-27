@@ -1,6 +1,6 @@
 import unittest
-from app.persistence import *
-from app import logger
+from persistence import *
+import logger
 
 class PersistenceTest(unittest.TestCase):
 
