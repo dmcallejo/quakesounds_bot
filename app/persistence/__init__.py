@@ -91,8 +91,9 @@ class Database:
 
     @db_session
     def delete_sound(self, sound):
+        assert type(sound) is Sound
         LOG.info('Deleting sound %s', str(sound))
-        sound = self.db.Sound.get(filename=sound['filename'])
+        sound = self.db.Sound.get(filename=sound.filename)
         if len(sound.uses) > 0:
             sound.delete()
         else:

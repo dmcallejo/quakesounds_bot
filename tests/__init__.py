@@ -24,7 +24,7 @@ class PersistenceTest(unittest.TestCase):
     def test_remove_sound(self):
         sound = self.db.get_sound(id=2)
         self.db.delete_sound(sound)
-        self.assertEqual(len(self.db.get_sounds()), 3)
+        self.assertEqual(len(self.db.get_sounds(include_disabled=False)), 3)
 
     def test_add_user(self):
         input_a = {
